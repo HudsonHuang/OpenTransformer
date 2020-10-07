@@ -10,10 +10,12 @@ class TransformerEncoder(nn.Module):
 
     def __init__(self, input_size, d_model=256, attention_heads=4, linear_units=2048, num_blocks=6, pos_dropout_rate=0.0,
                  slf_attn_dropout_rate=0.0, ffn_dropout_rate=0.0, residual_dropout_rate=0.1, input_layer="conv2d",
-                 normalize_before=True, concat_after=False, activation='relu', type='transformer'):
+                 normalize_before=True, concat_after=False, activation='relu', type='transformer', weight_sharing=False):
         super(TransformerEncoder, self).__init__()
 
         self.normalize_before = normalize_before
+        self.weight_sharing = weight_sharing
+        self.num_blocks = num_blocks
 
         if input_layer == "linear":
             self.embed = LinearWithPosEmbedding(input_size, d_model, pos_dropout_rate)
@@ -22,6 +24,8 @@ class TransformerEncoder(nn.Module):
         elif input_layer == 'conv2dv2':
             self.embed = Conv2dSubsamplingV2(input_size, d_model, pos_dropout_rate)
 
+        if weight_sharing:
+            num_blocks = 1
         self.blocks = nn.ModuleList([
             TransformerEncoderLayer(attention_heads, d_model, linear_units, slf_attn_dropout_rate, ffn_dropout_rate,
                                     residual_dropout_rate=residual_dropout_rate, normalize_before=normalize_before,
@@ -38,9 +42,15 @@ class TransformerEncoder(nn.Module):
 
         enc_output.masked_fill_(~enc_mask.transpose(1, 2), 0.0)
 
-        for _, block in enumerate(self.blocks):
-            enc_output, enc_mask = block(enc_output, enc_mask)
-            enc_output.masked_fill_(~enc_mask.transpose(1, 2), 0.0)
+        if self.weight_sharing:
+            block = self.blocks[0]
+            for _ in range(self.num_blocks):
+                enc_output, enc_mask = block(enc_output, enc_mask)
+                enc_output.masked_fill_(~enc_mask.transpose(1, 2), 0.0)
+        else:
+            for _, block in enumerate(self.blocks):
+                enc_output, enc_mask = block(enc_output, enc_mask)
+                enc_output.masked_fill_(~enc_mask.transpose(1, 2), 0.0)
 
         if self.normalize_before:
             enc_output = self.after_norm(enc_output)

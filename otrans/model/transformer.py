@@ -24,7 +24,8 @@ class Transformer(nn.Module):
                                           input_layer=params['enc_input_layer'],
                                           normalize_before=params['normalize_before'],
                                           concat_after=params['concat_after'],
-                                          activation=params['activation'])
+                                          activation=params['activation'],
+                                          weight_sharing=params['enc_weight_sharing'])
 
         self.decoder = TransformerDecoder(output_size=params['vocab_size'],
                                           d_model=params['d_model'],
@@ -39,7 +40,8 @@ class Transformer(nn.Module):
                                           normalize_before=params['normalize_before'],
                                           concat_after=params['concat_after'],
                                           activation=params['activation'],
-                                          share_embedding=params['share_embedding'])
+                                          share_embedding=params['share_embedding'],
+                                          weight_sharing=params['dec_weight_sharing'])
 
         self.crit = LabelSmoothingLoss(size=params['vocab_size'],
                                        smoothing=params['smoothing'])

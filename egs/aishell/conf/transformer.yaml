@@ -41,6 +41,8 @@ model:
   smoothing: 0.1
   activation: glu
   share_embedding: True
+  enc_weight_sharing: True
+  dec_weight_sharing: True
 train:
   scheduler: stepwise
   optimizer: adam
